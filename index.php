@@ -1,6 +1,6 @@
 <?php
 /**
- * PKV & Beihilfe Tracker V25 - Eigenanteil Spalte Edition
+ * PKV & Beihilfe Tracker V27 - Dynamische Terminüberweisung-Farbe
  */
 
 // --- .ENV PARSER ---
@@ -41,6 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         'doc_link'     => $_POST['doc_link'],  
         'gesamt'       => (float)str_replace(',', '.', $_POST['gesamt']),
         'z_status'     => $_POST['z_status'],  
+        'z_datum'      => $_POST['z_datum'],
         's_pkv'        => $_POST['s_pkv'],
         'e_pkv'        => (float)str_replace(',', '.', $_POST['e_pkv'] ?: 0),
         'pkv_sub_date' => $_POST['pkv_sub_date'], 
@@ -77,8 +78,25 @@ foreach ($data as $r) {
     }
 }
 
-function getStatusClass($s) {
-    return ($s === 'beglichen' || $s === 'bezahlt') ? 'bg-success' : (($s === 'offen') ? 'bg-danger' : 'bg-warning');
+/**
+ * Hilfsfunktion für Status-Farben
+ */
+function getStatusClass($status, $date = null) {
+    if ($status === 'offen') return 'bg-danger';
+    if ($status === 'beglichen' || $status === 'bar bezahlt' || $status === 'Überweisung') return 'bg-success';
+    
+    if ($status === 'Terminüberweisung') {
+        if (!empty($date)) {
+            $today = date('Y-m-d');
+            // Wenn Datum heute oder in der Vergangenheit liegt -> Grün
+            return ($date <= $today) ? 'bg-success' : 'bg-warning';
+        }
+        return 'bg-warning';
+    }
+    
+    // Fallback für PKV/Beihilfe Status
+    if ($status === 'eingereicht') return 'bg-warning';
+    return 'bg-warning'; 
 }
 ?>
 <!DOCTYPE html>
@@ -157,7 +175,16 @@ function getStatusClass($s) {
 
         <div class="form-row">
             <div class="field" style="width:120px;"><label>Betrag €</label><input type="number" step="0.01" name="gesamt" id="f_gesamt" oninput="calc()" required></div>
-            <div class="field" style="width:120px;"><label>Zahlstatus</label><select name="z_status" id="f_z_status"><option value="offen">Offen</option><option value="bezahlt">Bezahlt</option></select></div>
+            <div class="field" style="width:150px;"><label>Zahlstatus</label>
+                <select name="z_status" id="f_z_status">
+                    <option value="offen">Offen</option>
+                    <option value="bar bezahlt">Bar bezahlt</option>
+                    <option value="Terminüberweisung">Terminüberweisung</option>
+                    <option value="Überweisung">Überweisung</option>
+                </select>
+            </div>
+            <div class="field" style="width:140px;"><label>Zahl-Datum</label><input type="date" name="z_datum" id="f_z_datum"></div>
+            
             <div class="box box-pkv">
                 <label>PKV</label>
                 <div style="display:flex; gap:8px; margin-top:5px;">
@@ -211,7 +238,10 @@ function getStatusClass($s) {
                 </td>
                 <td><strong><?= number_format($r['gesamt'], 2, ',', '.') ?> €</strong></td>
                 <td style="color: #666; font-weight: 500;"><?= number_format($rowEigen, 2, ',', '.') ?> €</td>
-                <td><span class="badge <?= getStatusClass($r['z_status']) ?>"><?= $r['z_status'] ?></span></td>
+                <td>
+                    <span class="badge <?= getStatusClass($r['z_status'], $r['z_datum'] ?? null) ?>"><?= $r['z_status'] ?></span><br>
+                    <?php if(!empty($r['z_datum'])): ?><small><?= date('d.m.y', strtotime($r['z_datum'])) ?></small><?php endif; ?>
+                </td>
                 <td>
                     <span class="badge <?= getStatusClass($r['s_pkv']) ?>"><?= $r['s_pkv'] ?></span><br>
                     <strong><?= number_format($r['e_pkv'],2,',','.') ?>€</strong>
@@ -276,6 +306,7 @@ function editRow(d) {
     document.getElementById('f_link').value = d.doc_link || '';
     document.getElementById('f_gesamt').value = d.gesamt;
     document.getElementById('f_z_status').value = d.z_status;
+    document.getElementById('f_z_datum').value = d.z_datum || '';
     document.getElementById('f_s_pkv').value = d.s_pkv; 
     document.getElementById('f_e_pkv').value = d.e_pkv;
     document.getElementById('f_pkv_sub_date').value = d.pkv_sub_date || '';
