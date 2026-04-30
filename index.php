@@ -1,6 +1,6 @@
 <?php
 /**
- * PKV & Beihilfe Tracker V27 - Dynamische Terminüberweisung-Farbe
+ * PKV & Beihilfe Tracker V29 - Mit Echtzeit-Suche (Filter)
  */
 
 // --- .ENV PARSER ---
@@ -55,7 +55,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         'bh_belegnr'   => $_POST['bh_belegnr'],
         'bh_link'      => $_POST['bh_link']
     ];
-    uasort($data, function($a, $b) { return strcmp($b['rg_datum'], $a['rg_datum']); });
+    
+    // Sortierung: Intern-Nr absteigend
+    uasort($data, function($a, $b) {
+        return strnatcasecmp($b['intern_nr'], $a['intern_nr']);
+    });
+    
     file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
     header("Location: ?person=" . $currentKey); exit;
 }
@@ -78,24 +83,16 @@ foreach ($data as $r) {
     }
 }
 
-/**
- * Hilfsfunktion für Status-Farben
- */
 function getStatusClass($status, $date = null) {
     if ($status === 'offen') return 'bg-danger';
     if ($status === 'beglichen' || $status === 'bar bezahlt' || $status === 'Überweisung') return 'bg-success';
-    
     if ($status === 'Terminüberweisung') {
         if (!empty($date)) {
             $today = date('Y-m-d');
-            // Wenn Datum heute oder in der Vergangenheit liegt -> Grün
             return ($date <= $today) ? 'bg-success' : 'bg-warning';
         }
         return 'bg-warning';
     }
-    
-    // Fallback für PKV/Beihilfe Status
-    if ($status === 'eingereicht') return 'bg-warning';
     return 'bg-warning'; 
 }
 ?>
@@ -120,6 +117,13 @@ function getStatusClass($status, $date = null) {
         .person-nav { display: flex; gap: 5px; margin-bottom: 20px; background: #ddd; padding: 5px; border-radius: 8px; width: fit-content; }
         .person-nav a { text-decoration: none; padding: 8px 15px; color: #555; border-radius: 5px; font-size: 0.9rem; }
         .person-nav a.active { background: var(--pkv-blue); color: white; }
+        
+        /* Suche-Styling */
+        .search-container { margin-bottom: 15px; display: flex; align-items: center; gap: 10px; background: white; padding: 10px 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .search-container input { flex: 1; border: 1px solid #ddd; padding: 10px; border-radius: 6px; font-size: 1rem; outline: none; }
+        .search-container input:focus { border-color: var(--pkv-blue); box-shadow: 0 0 0 2px rgba(0,123,255,0.1); }
+        .search-label { font-weight: bold; color: #555; font-size: 0.9rem; }
+
         form { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.05); margin-bottom: 30px; }
         .form-row { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 15px; }
         .field { display: flex; flex-direction: column; gap: 4px; }
@@ -137,6 +141,7 @@ function getStatusClass($status, $date = null) {
         footer { background: var(--dark-gray); color: #bbb; padding: 30px; text-align: center; margin-top: 40px; font-size: 0.85rem; }
         footer a { color: white; text-decoration: none; border-bottom: 1px solid #555; }
         .btn-del { color: var(--danger-red); text-decoration: none; margin-left: 10px; }
+        tr.hidden { display: none; }
     </style>
 </head>
 <body onload="startTime()">
@@ -163,6 +168,7 @@ function getStatusClass($status, $date = null) {
         <div class="card" style="border-left-color: #6c757d;"><h3>Eigenanteil <?= $currentYear ?></h3><p><?= number_format($stats['eigenanteil_jahr'], 2, ',', '.') ?> €</p></div>
     </div>
 
+    <!-- Eingabeformular -->
     <form method="POST">
         <input type="hidden" name="action" value="save"><input type="hidden" name="id" id="f_id">
         <div class="form-row">
@@ -223,7 +229,14 @@ function getStatusClass($status, $date = null) {
         </div>
     </form>
 
-    <table>
+    <!-- Suche -->
+    <div class="search-container">
+        <span class="search-label">🔍 Suche:</span>
+        <input type="text" id="tableSearch" placeholder="Nach Nummer, Arzt, Betrag oder Beleg-Nr suchen..." onkeyup="filterTable()">
+    </div>
+
+    <!-- Tabelle -->
+    <table id="mainTable">
         <thead><tr><th>Nr.</th><th>Datum</th><th>Arzt / Zweck / Rechnung</th><th>Betrag</th><th>Eigenanteil</th><th>Status</th><th>PKV Details</th><th>BH Details</th><th>Aktion</th></tr></thead>
         <tbody>
             <?php foreach ($data as $id => $r): ?>
@@ -277,6 +290,32 @@ function getStatusClass($status, $date = null) {
 </footer>
 
 <script>
+// Live-Suche Logik
+function filterTable() {
+    const input = document.getElementById("tableSearch");
+    const filter = input.value.toUpperCase();
+    const table = document.getElementById("mainTable");
+    const tr = table.getElementsByTagName("tr");
+
+    // Durchlaufe alle Zeilen (außer Header)
+    for (let i = 1; i < tr.length; i++) {
+        let visible = false;
+        const tds = tr[i].getElementsByTagName("td");
+        
+        // Durchsuche alle Zellen der Zeile
+        for (let j = 0; j < tds.length - 1; j++) { // Letzte Spalte (Aktion) ignorieren
+            if (tds[j]) {
+                const textValue = tds[j].textContent || tds[j].innerText;
+                if (textValue.toUpperCase().indexOf(filter) > -1) {
+                    visible = true;
+                    break;
+                }
+            }
+        }
+        tr[i].style.display = visible ? "" : "none";
+    }
+}
+
 function startTime() {
     const today = new Date();
     let d = today.toLocaleDateString('de-DE');
@@ -286,6 +325,7 @@ function startTime() {
     setTimeout(startTime, 1000);
 }
 function checkTime(i) { if (i < 10) {i = "0" + i}; return i; }
+
 const ratios = { pkv: <?= $activeProfile['pkv'] ?>, bh: <?= $activeProfile['bh'] ?> };
 function calc() {
     const v = parseFloat(document.getElementById('f_gesamt').value) || 0;
