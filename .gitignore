@@ -1,0 +1,14 @@
+# Sensible Konfigurationsdaten
+.env
+
+# Datenspeicher (JSON-Datenbanken)
+# Verhindert, dass deine privaten Rechnungsdaten hochgeladen werden
+data_*.json
+
+# Betriebssystem-spezifische Dateien
+.DS_Store
+Thumbs.db
+
+# IDE / Editor Ordner
+.vscode/
+.idea/
