@@ -1,15 +1,6 @@
 <?php
-/**
- * PKV & Beihilfe Tracker V29 - Mit Echtzeit-Suche (Filter)
- */
 
 // --- .ENV PARSER ---
-$config = [
-    'APP_NAME' => 'PKV Tracker 2026',
-    'GIT_REPO' => 'https://github.com/dein-repo',
-    'APP_LOGO' => 'logo.png' 
-];
-
 $PROFILES = [];
 if (file_exists('.env')) {
     $lines = file('.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
@@ -55,12 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         'bh_belegnr'   => $_POST['bh_belegnr'],
         'bh_link'      => $_POST['bh_link']
     ];
-    
-    // Sortierung: Intern-Nr absteigend
-    uasort($data, function($a, $b) {
-        return strnatcasecmp($b['intern_nr'], $a['intern_nr']);
-    });
-    
+    uasort($data, function($a, $b) { return strnatcasecmp($b['intern_nr'], $a['intern_nr']); });
     file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
     header("Location: ?person=" . $currentKey); exit;
 }
@@ -71,13 +57,19 @@ if (isset($_GET['delete'])) {
     header("Location: ?person=" . $currentKey); exit;
 }
 
-// --- STATS CALCULATION ---
+// --- STATS CALCULATION (UPDATED) ---
 $currentYear = date('Y');
-$stats = ['gesamt' => 0, 'offen' => 0, 'eigenanteil_jahr' => 0];
+$stats = ['gesamt' => 0, 'offen' => 0, 'offen_pkv' => 0, 'offen_bh' => 0, 'eigenanteil_jahr' => 0];
 foreach ($data as $r) {
     $stats['gesamt'] += $r['gesamt'];
-    if ($r['s_pkv'] !== 'beglichen') $stats['offen'] += $r['e_pkv'];
-    if ($r['s_bh'] !== 'beglichen') $stats['offen'] += $r['e_bh'];
+    if ($r['s_pkv'] !== 'beglichen') {
+        $stats['offen'] += $r['e_pkv'];
+        $stats['offen_pkv'] += $r['e_pkv'];
+    }
+    if ($r['s_bh'] !== 'beglichen') {
+        $stats['offen'] += $r['e_bh'];
+        $stats['offen_bh'] += $r['e_bh'];
+    }
     if (date('Y', strtotime($r['rg_datum'])) == $currentYear) {
         $stats['eigenanteil_jahr'] += ($r['gesamt'] - ($r['e_pkv'] + $r['e_bh']));
     }
@@ -96,34 +88,45 @@ function getStatusClass($status, $date = null) {
     return 'bg-warning'; 
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title><?= htmlspecialchars($config['APP_NAME']) ?></title>
+    <title>Abrechnung PKV & BH</title>
     <style>
         :root { --pkv-blue: #007bff; --success-green: #28a745; --danger-red: #dc3545; --bg-gray: #f0f2f5; --dark-gray: #343a40; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg-gray); margin: 0; min-height: 100vh; display: flex; flex-direction: column; }
-        header { background: white; padding: 10px 40px; display: grid; grid-template-columns: 220px 1fr 220px; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .logo-container img { width: 200px; height: 150px; object-fit: contain; border: none; background: transparent; }
-        .header-title { text-align: center; }
-        .header-title h1 { margin: 0; font-size: 1.6rem; color: #333; }
-        .live-clock { text-align: right; font-size: 1rem; color: #555; font-weight: 500; }
-        .container { max-width: 1600px; margin: 20px auto; padding: 0 20px; flex: 1; width: 100%; box-sizing: border-box; }
-        .dashboard { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 25px; }
+        
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: var(--bg-gray); 
+            margin: 0; 
+            min-height: 100vh; 
+            display: flex; 
+            flex-direction: column; 
+        }
+
+        .container { 
+            max-width: 1600px; 
+            margin: 0 auto 20px auto; 
+            padding: 0 20px; 
+            flex: 1; 
+            width: 100%; 
+            box-sizing: border-box; 
+        }
+        
+        /* Dashboard updated to 4 columns */
+        .dashboard { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 25px; }
         .card { background: white; padding: 15px 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-left: 5px solid var(--pkv-blue); }
         .card h3 { margin: 0; font-size: 0.75rem; color: #666; text-transform: uppercase; margin-bottom: 5px; }
         .card p { margin: 0; font-size: 1.4rem; font-weight: bold; }
+        
         .person-nav { display: flex; gap: 5px; margin-bottom: 20px; background: #ddd; padding: 5px; border-radius: 8px; width: fit-content; }
         .person-nav a { text-decoration: none; padding: 8px 15px; color: #555; border-radius: 5px; font-size: 0.9rem; }
         .person-nav a.active { background: var(--pkv-blue); color: white; }
-        
-        /* Suche-Styling */
         .search-container { margin-bottom: 15px; display: flex; align-items: center; gap: 10px; background: white; padding: 10px 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .search-container input { flex: 1; border: 1px solid #ddd; padding: 10px; border-radius: 6px; font-size: 1rem; outline: none; }
-        .search-container input:focus { border-color: var(--pkv-blue); box-shadow: 0 0 0 2px rgba(0,123,255,0.1); }
-        .search-label { font-weight: bold; color: #555; font-size: 0.9rem; }
-
+        
         form { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.05); margin-bottom: 30px; }
         .form-row { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 15px; }
         .field { display: flex; flex-direction: column; gap: 4px; }
@@ -134,25 +137,46 @@ function getStatusClass($status, $date = null) {
         table { width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
         th { background: #f8f9fa; padding: 12px; text-align: left; font-size: 0.7rem; color: #666; border-bottom: 2px solid #eee; }
         td { padding: 12px; border-bottom: 1px solid #f1f1f1; font-size: 0.85rem; vertical-align: top; }
+        
         .badge { padding: 3px 8px; border-radius: 4px; font-size: 0.65rem; font-weight: bold; color: white; text-transform: uppercase; display: inline-block; margin-bottom: 4px; }
         .bg-success { background: var(--success-green); } .bg-danger { background: var(--danger-red); } .bg-warning { background: #fd7e14; }
-        .btn-doc-inline { text-decoration: none; font-size: 1.1rem; margin-left: 5px; vertical-align: middle; }
         .btn-refund-dl { text-decoration: none; background: #e9ecef; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; color: #333; display: inline-block; margin-top: 5px; border: 1px solid #ccc; font-weight: bold; }
+        .btn-del { color: var(--danger-red); text-decoration: none; margin-left: 10px; }
+        
         footer { background: var(--dark-gray); color: #bbb; padding: 30px; text-align: center; margin-top: 40px; font-size: 0.85rem; }
         footer a { color: white; text-decoration: none; border-bottom: 1px solid #555; }
-        .btn-del { color: var(--danger-red); text-decoration: none; margin-left: 10px; }
-        tr.hidden { display: none; }
     </style>
 </head>
-<body onload="startTime()">
+<body>
 
-<header>
-    <div class="logo-container"><img src="<?= htmlspecialchars($config['APP_LOGO']) ?>" alt="Logo"></div>
-    <div class="header-title">
-        <h1><?= htmlspecialchars($config['APP_NAME']) ?></h1>
-        <div style="font-size: 1rem; color: var(--pkv-blue); font-weight: bold; margin-top: 5px;"><?= $activeProfile['name'] ?></div>
+<style>
+    .main-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 30px;
+        background-color: #ffffff;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        font-family: 'Segoe UI', sans-serif;
+        margin-bottom: 20px;
+    }
+    .header-logo img { height: 50px; width: auto; display: block; }
+    .header-title-center h1 { margin: 0; font-size: 1.5rem; color: #333; text-align: center; }
+    .header-nav-right .btn-dashboard { text-decoration: none; background-color: #007bff; color: white; padding: 8px 16px; border-radius: 6px; font-weight: bold; transition: background 0.3s; }
+    .header-nav-right .btn-dashboard:hover { background-color: #0056b3; }
+</style>
+
+<header class="main-header">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <div class="header-logo">
+        <img src="logo.png" alt="Logo">
     </div>
-    <div class="live-clock" id="clock"></div>
+    <div class="header-title-center">
+        <h1>Abrechnung Private Krankenversicherung & Beihilfe</h1>
+    </div>
+    <div class="header-nav-right">
+        <a href="../index.php" class="btn-dashboard"><i class="fa-solid fa-house"></i> Dashboard</a>
+    </div>
 </header>
 
 <div class="container">
@@ -162,13 +186,27 @@ function getStatusClass($status, $date = null) {
         <?php endforeach; ?>
     </div>
 
+    <!-- Dashboard with split values -->
     <div class="dashboard">
-        <div class="card"><h3>Gesamtvolumen</h3><p><?= number_format($stats['gesamt'], 2, ',', '.') ?> €</p></div>
-        <div class="card" style="border-left-color: var(--danger-red);"><h3>Erstattungen offen</h3><p><?= number_format($stats['offen'], 2, ',', '.') ?> €</p></div>
-        <div class="card" style="border-left-color: #6c757d;"><h3>Eigenanteil <?= $currentYear ?></h3><p><?= number_format($stats['eigenanteil_jahr'], 2, ',', '.') ?> €</p></div>
+        <div class="card">
+            <h3>Gesamtvolumen</h3>
+            <p><?= number_format($stats['gesamt'], 2, ',', '.') ?> €</p>
+        </div>
+        <div class="card" style="border-left-color: #fd7e14;">
+            <h3>Offen PKV</h3>
+            <p><?= number_format($stats['offen_pkv'], 2, ',', '.') ?> €</p>
+        </div>
+        <div class="card" style="border-left-color: #fd7e14;">
+            <h3>Offen Beihilfe</h3>
+            <p><?= number_format($stats['offen_bh'], 2, ',', '.') ?> €</p>
+        </div>
+        <div class="card" style="border-left-color: #cc0a00;">
+            <h3>Eigenanteil <?= $currentYear ?></h3>
+            <p><?= number_format($stats['eigenanteil_jahr'], 2, ',', '.') ?> €</p>
+        </div>
     </div>
 
-    <!-- Eingabeformular -->
+    <!-- Rest of the script remains identical -->
     <form method="POST">
         <input type="hidden" name="action" value="save"><input type="hidden" name="id" id="f_id">
         <div class="form-row">
@@ -178,7 +216,6 @@ function getStatusClass($status, $date = null) {
             <div class="field" style="flex:1.5;"><label>Inhalt / Zweck</label><input type="text" name="beschreibung" id="f_desc"></div>
             <div class="field" style="flex:2;"><label>Rechnung (Link)</label><input type="url" name="doc_link" id="f_link"></div>
         </div>
-
         <div class="form-row">
             <div class="field" style="width:120px;"><label>Betrag €</label><input type="number" step="0.01" name="gesamt" id="f_gesamt" oninput="calc()" required></div>
             <div class="field" style="width:150px;"><label>Zahlstatus</label>
@@ -190,7 +227,6 @@ function getStatusClass($status, $date = null) {
                 </select>
             </div>
             <div class="field" style="width:140px;"><label>Zahl-Datum</label><input type="date" name="z_datum" id="f_z_datum"></div>
-            
             <div class="box box-pkv">
                 <label>PKV</label>
                 <div style="display:flex; gap:8px; margin-top:5px;">
@@ -229,13 +265,11 @@ function getStatusClass($status, $date = null) {
         </div>
     </form>
 
-    <!-- Suche -->
     <div class="search-container">
         <span class="search-label">🔍 Suche:</span>
         <input type="text" id="tableSearch" placeholder="Nach Nummer, Arzt, Betrag oder Beleg-Nr suchen..." onkeyup="filterTable()">
     </div>
 
-    <!-- Tabelle -->
     <table id="mainTable">
         <thead><tr><th>Nr.</th><th>Datum</th><th>Arzt / Zweck / Rechnung</th><th>Betrag</th><th>Eigenanteil</th><th>Status</th><th>PKV Details</th><th>BH Details</th><th>Aktion</th></tr></thead>
         <tbody>
@@ -286,24 +320,19 @@ function getStatusClass($status, $date = null) {
 </div>
 
 <footer>
-    <p><strong><?= htmlspecialchars($config['APP_NAME']) ?></strong> | Lizenziert unter <a href="https://www.gnu.org/licenses/agpl-3.0.de.html" target="_blank">AGPL-3.0</a> | Source: <a href="<?= htmlspecialchars($config['GIT_REPO']) ?>" target="_blank">GitHub</a></p>
+    <p><strong>Abrechnung PKV & BH</strong> | Lizenziert unter <a href="https://www.gnu.org/licenses/agpl-3.0.de.html" target="_blank">AGPL-3.0</a> | Source von Herr-NM: <a href="https://github.com/herr-nm/Privat_Abrechnung_PKV_Beihilfe" target="_blank">GitHub</a></p>
 </footer>
 
 <script>
-// Live-Suche Logik
 function filterTable() {
     const input = document.getElementById("tableSearch");
     const filter = input.value.toUpperCase();
     const table = document.getElementById("mainTable");
     const tr = table.getElementsByTagName("tr");
-
-    // Durchlaufe alle Zeilen (außer Header)
     for (let i = 1; i < tr.length; i++) {
         let visible = false;
         const tds = tr[i].getElementsByTagName("td");
-        
-        // Durchsuche alle Zellen der Zeile
-        for (let j = 0; j < tds.length - 1; j++) { // Letzte Spalte (Aktion) ignorieren
+        for (let j = 0; j < tds.length - 1; j++) {
             if (tds[j]) {
                 const textValue = tds[j].textContent || tds[j].innerText;
                 if (textValue.toUpperCase().indexOf(filter) > -1) {
@@ -315,17 +344,6 @@ function filterTable() {
         tr[i].style.display = visible ? "" : "none";
     }
 }
-
-function startTime() {
-    const today = new Date();
-    let d = today.toLocaleDateString('de-DE');
-    let h = today.getHours(); let m = today.getMinutes(); let s = today.getSeconds();
-    m = checkTime(m); s = checkTime(s);
-    document.getElementById('clock').innerHTML = d + " - " + h + ":" + m + ":" + s;
-    setTimeout(startTime, 1000);
-}
-function checkTime(i) { if (i < 10) {i = "0" + i}; return i; }
-
 const ratios = { pkv: <?= $activeProfile['pkv'] ?>, bh: <?= $activeProfile['bh'] ?> };
 function calc() {
     const v = parseFloat(document.getElementById('f_gesamt').value) || 0;
