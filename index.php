@@ -5,14 +5,28 @@ $PROFILES = [];
 if (file_exists('.env')) {
     $lines = file('.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($lines as $line) {
-        if (strpos(trim($line), '#') === 0) continue;
+        $line = trim($line);
+        if (strpos($line, '#') === 0 || empty($line)) continue;
         $parts = explode('=', $line, 2);
         if (count($parts) !== 2) continue;
-        $key = trim($parts[0]); $value = trim($parts[1]);
+        
+        $key = trim($parts[0]); 
+        $value = trim($parts[1]);
+        
         if (strpos($key, 'PERSON_') === 0) {
-            $p = explode(',', $value);
-            $PROFILES[$p[0]] = ['name' => $p[1], 'prefix' => $p[2], 'pkv' => (float)$p[3], 'bh' => (float)$p[4]];
-        } else { $config[$key] = $value; }
+            // Trimmt jedes einzelne Element nach dem Komma-Split
+            $p = array_map('trim', explode(',', $value)); 
+            if (count($p) >= 5) {
+                $PROFILES[$p[0]] = [
+                    'name'   => $p[1], 
+                    'prefix' => $p[2], 
+                    'pkv'    => (float)$p[3], 
+                    'bh'     => (float)$p[4]
+                ];
+            }
+        } else { 
+            $config[$key] = $value; 
+        }
     }
 }
 
