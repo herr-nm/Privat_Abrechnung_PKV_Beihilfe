@@ -175,6 +175,8 @@ function getStatusClass($status, $date = null) {
         <h1>Abrechnung Private Krankenversicherung & Beihilfe</h1>
     </div>
     <div class="header-nav-right">
+        <a href="pkv.php" class="btn-dashboard"><i class="fa-solid fa-list"></i> PKV buchen</a>
+        <a href="bh.php" class="btn-dashboard"><i class="fa-solid fa-list"></i> BH buchen</a>
         <a href="../index.php" class="btn-dashboard"><i class="fa-solid fa-house"></i> Dashboard</a>
     </div>
 </header>
