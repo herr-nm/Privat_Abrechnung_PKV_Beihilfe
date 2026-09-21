@@ -1,0 +1,39 @@
+# Privat-Abrechnung PKV & Beihilfe – Zugriffsschutz (Apache 2.4)
+
+# Verzeichnisinhalt nie auflisten
+Options -Indexes
+
+# Konfiguration, Datenbank (SQLite) und alte JSON-Datenbestände nie direkt ausliefern
+<FilesMatch "^(\.env|data_.*\.json|.*\.json\.bak|.*\.log|.*\.sqlite3?(-journal|-wal|-shm)?|.*\.db)$">
+    Require all denied
+</FilesMatch>
+
+# Reine Include-Dateien nicht direkt aufrufbar (per PHP-require weiterhin nutzbar)
+<FilesMatch "^(common|bescheid_form)\.php$">
+    Require all denied
+</FilesMatch>
+
+# Alle Punkt-Dateien sperren (.env, .git, .htpasswd, ...), .htaccess selbst eingeschlossen
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+# ---------------------------------------------------------------
+# OPTIONAL: Passwortschutz für die gesamte Anwendung
+# 1. Passwortdatei außerhalb des Webroots anlegen:
+#      htpasswd -c /pfad/ausserhalb/webroot/.htpasswd benutzername
+# 2. Pfad unten anpassen und die Kommentarzeichen (#) entfernen.
+# ---------------------------------------------------------------
+#AuthType Basic
+#AuthName "Privat-Abrechnung"
+#AuthUserFile /pfad/ausserhalb/webroot/.htpasswd
+#Require valid-user
+
+# Zusätzliche Sicherheits-Header
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set Referrer-Policy "same-origin"
+    # Seiten mit Gesundheitsdaten nicht im Browser-/Proxy-Cache ablegen
+    Header set Cache-Control "no-store"
+</IfModule>

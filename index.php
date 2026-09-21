@@ -1,77 +1,48 @@
 <?php
+require __DIR__ . '/common.php';
 
-// --- .ENV PARSER ---
-$PROFILES = [];
-if (file_exists('.env')) {
-    $lines = file('.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-    foreach ($lines as $line) {
-        $line = trim($line);
-        if (strpos($line, '#') === 0 || empty($line)) continue;
-        $parts = explode('=', $line, 2);
-        if (count($parts) !== 2) continue;
-        
-        $key = trim($parts[0]); 
-        $value = trim($parts[1]);
-        
-        if (strpos($key, 'PERSON_') === 0) {
-            // Trimmt jedes einzelne Element nach dem Komma-Split
-            $p = array_map('trim', explode(',', $value)); 
-            if (count($p) >= 5) {
-                $PROFILES[$p[0]] = [
-                    'name'   => $p[1], 
-                    'prefix' => $p[2], 
-                    'pkv'    => (float)$p[3], 
-                    'bh'     => (float)$p[4]
-                ];
-            }
-        } else { 
-            $config[$key] = $value; 
-        }
-    }
-}
+$PROFILES = loadProfiles();
 
 $currentKey = $_GET['person'] ?? (array_key_first($PROFILES) ?: '');
 $activeProfile = $PROFILES[$currentKey] ?? ['name' => 'Gast', 'prefix' => 'X', 'pkv' => 0.5, 'bh' => 0.5];
-$jsonFile = "data_{$currentKey}.json";
-$data = file_exists($jsonFile) ? json_decode(file_get_contents($jsonFile), true) : [];
+$data = isset($PROFILES[$currentKey]) ? loadData($currentKey) : [];
 
 // --- LOGIK: SPEICHERN ---
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'save') {
-    $id = !empty($_POST['id']) ? $_POST['id'] : uniqid();
-    $data[$id] = [
-        'intern_nr'    => $_POST['intern_nr'], 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'save' && isset($PROFILES[$currentKey])) {
+    $id = !empty($_POST['id']) ? (string)$_POST['id'] : '';
+    // Eine mitgeschickte ID gilt nur, wenn der Beleg dieser Person gehört; sonst wird neu angelegt
+    if ($id === '' || getBeleg($currentKey, $id) === null) $id = uniqid();
+    saveBeleg($currentKey, $id, [
+        'intern_nr'    => $_POST['intern_nr'],
         'rg_datum'     => $_POST['rg_datum'],
-        'arzt'         => $_POST['arzt'],      
+        'arzt'         => $_POST['arzt'],
         'beschreibung' => $_POST['beschreibung'],
-        'doc_link'     => $_POST['doc_link'],  
+        'doc_link'     => $_POST['doc_link'],
         'gesamt'       => (float)str_replace(',', '.', $_POST['gesamt']),
-        'z_status'     => $_POST['z_status'],  
+        'z_status'     => $_POST['z_status'],
         'z_datum'      => $_POST['z_datum'],
         's_pkv'        => $_POST['s_pkv'],
         'e_pkv'        => (float)str_replace(',', '.', $_POST['e_pkv'] ?: 0),
-        'pkv_sub_date' => $_POST['pkv_sub_date'], 
+        'pkv_sub_date' => $_POST['pkv_sub_date'],
         'pkv_date'     => $_POST['pkv_date'],
         'pkv_belegnr'  => $_POST['pkv_belegnr'],
         'pkv_link'     => $_POST['pkv_link'],
-        's_bh'         => $_POST['s_bh'],         
+        's_bh'         => $_POST['s_bh'],
         'e_bh'         => (float)str_replace(',', '.', $_POST['e_bh'] ?: 0),
-        'bh_sub_date'  => $_POST['bh_sub_date'],  
+        'bh_sub_date'  => $_POST['bh_sub_date'],
         'bh_date'      => $_POST['bh_date'],
         'bh_belegnr'   => $_POST['bh_belegnr'],
-        'bh_link'      => $_POST['bh_link']
-    ];
-    uasort($data, function($a, $b) { return strnatcasecmp($b['intern_nr'], $a['intern_nr']); });
-    file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
-    header("Location: ?person=" . $currentKey); exit;
+        'bh_link'      => $_POST['bh_link'],
+    ]);
+    header("Location: ?person=" . urlencode($currentKey)); exit;
 }
 
-if (isset($_GET['delete'])) {
-    unset($data[$_GET['delete']]);
-    file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
-    header("Location: ?person=" . $currentKey); exit;
+if (isset($_GET['delete']) && isset($PROFILES[$currentKey])) {
+    deleteBeleg($currentKey, (string)$_GET['delete']);
+    header("Location: ?person=" . urlencode($currentKey)); exit;
 }
 
-// --- STATS CALCULATION (UPDATED) ---
+// --- STATS CALCULATION ---
 $currentYear = date('Y');
 $stats = ['gesamt' => 0, 'offen' => 0, 'offen_pkv' => 0, 'offen_bh' => 0, 'eigenanteil_jahr' => 0];
 foreach ($data as $r) {
@@ -99,7 +70,7 @@ function getStatusClass($status, $date = null) {
         }
         return 'bg-warning';
     }
-    return 'bg-warning'; 
+    return 'bg-warning';
 }
 ?>
 
@@ -176,6 +147,7 @@ function getStatusClass($status, $date = null) {
     }
     .header-logo img { height: 50px; width: auto; display: block; }
     .header-title-center h1 { margin: 0; font-size: 1.5rem; color: #333; text-align: center; }
+    .header-nav-right { display: flex; gap: 8px; flex-wrap: wrap; }
     .header-nav-right .btn-dashboard { text-decoration: none; background-color: #007bff; color: white; padding: 8px 16px; border-radius: 6px; font-weight: bold; transition: background 0.3s; }
     .header-nav-right .btn-dashboard:hover { background-color: #0056b3; }
 </style>
@@ -189,8 +161,12 @@ function getStatusClass($status, $date = null) {
         <h1>Abrechnung Private Krankenversicherung & Beihilfe</h1>
     </div>
     <div class="header-nav-right">
-        <a href="pkv.php" class="btn-dashboard"><i class="fa-solid fa-list"></i> PKV buchen</a>
-        <a href="bh.php" class="btn-dashboard"><i class="fa-solid fa-list"></i> BH buchen</a>
+        <a href="einreichung.php" class="btn-dashboard"><i class="fa-solid fa-paper-plane"></i> Einreichen</a>
+        <a href="bescheid.php" class="btn-dashboard"><i class="fa-solid fa-file-invoice"></i> BH-Bescheid</a>
+        <a href="bescheid_pkv.php" class="btn-dashboard"><i class="fa-solid fa-file-medical"></i> PKV-Bescheid</a>
+        <a href="beitragsrueckerstattung.php" class="btn-dashboard"><i class="fa-solid fa-coins"></i> Beitragsrückerstattung</a>
+        <a href="statistik.php" class="btn-dashboard"><i class="fa-solid fa-chart-bar"></i> Statistik</a>
+        <a href="export.php" class="btn-dashboard"><i class="fa-solid fa-file-pdf"></i> Export</a>
         <a href="../index.php" class="btn-dashboard"><i class="fa-solid fa-house"></i> Dashboard</a>
     </div>
 </header>
