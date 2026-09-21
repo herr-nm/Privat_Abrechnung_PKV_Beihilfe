@@ -2,13 +2,7 @@
 
 Ein schlankes, PHP-basiertes Tool zur Verwaltung von Arztrechnungen, Erstattungen der privaten Krankenversicherung (PKV) und der Beihilfe (BH). Die Anwendung ermöglicht es, Rechnungen zu erfassen, Zahlungs- und Einreichungsstatus zu überwachen, Bescheide zu erfassen und den Überblick über offene Erstattungen sowie den jährlichen Eigenanteil zu behalten.
 
-<!--
-SCREENSHOTS: Bitte mit Testdaten (nicht mit echten Arzt-, Personen- oder Betragsdaten) aufnehmen und unter
-docs/screenshots/ mit den in dieser README genannten Dateinamen ablegen. Am Ende der README steht eine Checkliste.
--->
-
 ![Übersicht mit Dashboard und Belegtabelle](docs/screenshots/01-uebersicht.png)
-<!-- 📷 01-uebersicht.png: index.php mit den vier Dashboard-Kacheln, Personen-Reiter und mehreren Belegen in der Tabelle -->
 
 ## Features
 
@@ -94,7 +88,6 @@ PERSON_2=erika,Erika Mustermann,E,0.5,0.5
 Geben Sie den Gesamtbetrag der Rechnung ein. Das Skript berechnet automatisch die erwarteten Anteile für PKV und Beihilfe. Sie können diese Beträge bei Bedarf manuell anpassen (z. B. wenn bestimmte Leistungen nicht erstattungsfähig sind).
 
 ![Formular zum Erfassen eines Belegs](docs/screenshots/02-beleg-erfassen.png)
-<!-- 📷 02-beleg-erfassen.png: Erfassungsformular oben auf index.php mit ausgefülltem Betrag und berechneten PKV-/BH-Anteilen -->
 
 ### Status aktualisieren
 Sobald Sie eine Rechnung eingereicht oder eine Erstattung erhalten haben, können Sie den Eintrag über das ✏️-Symbol bearbeiten. Das Dashboard aktualisiert sich sofort und zeigt Ihnen, welche Beträge noch ausstehen. Für mehrere Belege gleichzeitig gibt es die Sammel-Einreichung und die Bescheid-Erfassung (siehe unten).
@@ -109,7 +102,6 @@ Wenn du mehrere Rechnungen auf einmal bei Beihilfe und/oder PKV einreichst, muss
 4. Mit „Als eingereicht speichern“ werden alle gewählten Häkchen in einer Transaktion auf „eingereicht“ gesetzt und das Einreichdatum eingetragen.
 
 ![Sammel-Einreichung](docs/screenshots/03-sammel-einreichung.png)
-<!-- 📷 03-sammel-einreichung.png: einreichung.php mit mehreren gesetzten Häkchen und sichtbaren Summen unten -->
 
 ### Bescheide erfassen (`bescheid.php` und `bescheid_pkv.php`)
 
@@ -122,10 +114,8 @@ Für den Eingang eines Bescheids gibt es zwei Seiten mit identischem Ablauf: `be
 5. **Speichern:** Erst nach der Sicherheitsabfrage werden alle Belege gemeinsam aktualisiert.
 
 ![Erfassung eines Beihilfebescheids](docs/screenshots/04-bescheid-beihilfe.png)
-<!-- 📷 04-bescheid-beihilfe.png: bescheid.php mit ausgefüllten Kopfdaten und zwei bis drei Positionen -->
 
 ![Erfassung eines PKV-Bescheids](docs/screenshots/05-bescheid-pkv.png)
-<!-- 📷 05-bescheid-pkv.png: bescheid_pkv.php (Reihenfolge und Aufbau wie bei der Beihilfe, blaue Positionsboxen) -->
 
 **Was beim Speichern geändert wird** (je Position):
 
@@ -159,7 +149,6 @@ Das Ergebnis zeigt, ob der Verzicht auf die PKV-Einreichung rechnerisch günstig
 Annahmen: Zuordnung zum Jahr nach Rechnungsdatum, die Beihilfe wird unverändert eingereicht, Staffelungen oder Teilrückerstattungen und steuerliche Effekte sind nicht abgebildet. Es handelt sich um eine reine Rechenhilfe; maßgeblich sind die Tarifbedingungen.
 
 ![Beitragsrückerstattung](docs/screenshots/06-beitragsrueckerstattung.png)
-<!-- 📷 06-beitragsrueckerstattung.png: beitragsrueckerstattung.php mit eingetragenen Werten und sichtbarem Ergebnis-Hinweis (grün oder rot) -->
 
 ### Statistik (`statistik.php`)
 
@@ -167,17 +156,12 @@ Annahmen: Zuordnung zum Jahr nach Rechnungsdatum, die Beihilfe wird unverändert
 - **Jahresvergleich** für alle Personen zusammen und je Person: Belege, Rechnungssumme, PKV, Beihilfe, Eigenanteil (€ und %), Veränderung zum Vorjahr und ein Balken für die Aufteilung. Angezeigt werden das laufende Jahr und bis zu fünf Vorjahre, sofern Daten vorhanden sind, dazu der Durchschnitt der Vorjahre.
 
 ![Statistik: offene Summen](docs/screenshots/07-statistik-offen.png)
-<!-- 📷 07-statistik-offen.png: oberer Teil von statistik.php mit den drei Kacheln und der Personen-Tabelle -->
-
-![Statistik: Jahresvergleich](docs/screenshots/08-statistik-jahresvergleich.png)
-<!-- 📷 08-statistik-jahresvergleich.png: unterer Teil von statistik.php mit Jahresvergleich einer Person inklusive Balken -->
 
 ### Export als PDF (`export.php`)
 
 Wähle Person, Jahr (oder alle Jahre) und Umfang (alle Belege oder nur mit offener Erstattung) und klicke auf „Als PDF speichern / drucken“. Im Druckdialog des Browsers wählst du „Als PDF speichern“ (A4 quer ist voreingestellt; Kopf- und Fußzeilen des Browsers lassen sich dort abschalten). Der Bericht enthält je Person eine Belegtabelle mit PKV- und Beihilfe-Status, Bescheidnummern, Zwischensummen und eine Gesamtübersicht. Der Export benötigt keine zusätzliche PHP-Bibliothek.
 
-![Export-Ansicht](docs/screenshots/09-export.png)
-<!-- 📷 09-export.png: export.php in der Seitenvorschau des Druckdialogs (oder das erzeugte PDF) -->
+![Export-Ansicht](docs/screenshots/08-export.png)
 
 ### Dashboard-Logik
 - **Offen PKV/BH:** Summiert alle Beträge, deren Status nicht auf „beglichen“ steht.
@@ -238,21 +222,3 @@ Dieses Projekt ist unter der **GNU AGPL-3.0** lizenziert. Weitere Details findes
 ---
 
 **Source:** [herr-nm/Privat_Abrechnung_PKV_Beihilfe](https://github.com/herr-nm/Privat_Abrechnung_PKV_Beihilfe)
-
----
-
-## Checkliste: Screenshots
-
-Lege die Bilder unter `docs/screenshots/` ab. Verwende Testdaten und ausgedachte Namen.
-
-| Datei | Motiv |
-|---|---|
-| `01-uebersicht.png` | `index.php`: Dashboard-Kacheln, Personen-Reiter, mehrere Belege |
-| `02-beleg-erfassen.png` | Erfassungsformular mit berechneten PKV-/BH-Anteilen |
-| `03-sammel-einreichung.png` | `einreichung.php` mit gesetzten Häkchen und Summen |
-| `04-bescheid-beihilfe.png` | `bescheid.php` mit Kopfdaten und mehreren Positionen |
-| `05-bescheid-pkv.png` | `bescheid_pkv.php` |
-| `06-beitragsrueckerstattung.png` | `beitragsrueckerstattung.php` mit Ergebnis-Hinweis |
-| `07-statistik-offen.png` | `statistik.php`, oberer Teil (offene Summen) |
-| `08-statistik-jahresvergleich.png` | `statistik.php`, Jahresvergleich einer Person |
-| `09-export.png` | `export.php` in der Druckvorschau |
