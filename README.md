@@ -38,7 +38,6 @@ Ein schlankes, PHP-basiertes Tool zur Verwaltung von Arztrechnungen, Erstattunge
 | `statistik.php` | Offene Summen und Jahresvergleich |
 | `export.php` | Druck-/PDF-Ansicht der Belege |
 | `common.php` | Gemeinsame Funktionen: `.env`, Datenbankzugriff, Seitengerüst (nicht direkt aufrufen) |
-| `migrate.php` | Einmalige Übernahme alter JSON-Daten nach SQLite (danach löschen) |
 | `.htaccess` | Zugriffsschutz für `.env`, Datenbank und Include-Dateien |
 | `.env` | Profile der Personen und Erstattungssätze (selbst anlegen) |
 | `abrechnung.sqlite` | Datenbank, wird beim ersten Aufruf automatisch angelegt |
@@ -46,23 +45,11 @@ Ein schlankes, PHP-basiertes Tool zur Verwaltung von Arztrechnungen, Erstattunge
 
 ## Installation
 
-1. **Dateien kopieren:** Lade alle `.php`-Dateien, die `.htaccess` und (optional) die `logo.png` in dasselbe Verzeichnis auf deinen Webserver. `migrate.php` wird nur bei einem Upgrade von der JSON-Version benötigt.
+1. **Dateien kopieren:** Lade alle `.php`-Dateien, die `.htaccess` und (optional) die `logo.png` in dasselbe Verzeichnis auf deinen Webserver.
 2. **Konfiguration:** Lege eine Datei `.env` im selben Verzeichnis an (siehe unten).
 3. **Schreibrechte:** Das Verzeichnis muss für den Webserver-Benutzer beschreibbar sein, damit `abrechnung.sqlite` erstellt werden kann. Nach dem ersten Aufruf genügt Schreibzugriff auf die Datenbankdatei selbst.
 4. **Erster Aufruf:** `index.php` im Browser öffnen. Tabellen werden automatisch angelegt.
 5. **Zugriffsschutz prüfen:** Folgende Aufrufe müssen mit **403** antworten: `.env`, `abrechnung.sqlite`, `common.php`. Andernfalls greift die `.htaccess` nicht (siehe Abschnitt [Sicherheit](#sicherheit)).
-
-### Upgrade von der JSON-Version
-
-Frühere Versionen speicherten die Daten in `data_<person>.json`. So übernimmst du sie:
-
-1. Sichere vorab das Verzeichnis (mindestens alle `data_*.json`).
-2. Lade die neuen Dateien hoch, die `.env` bleibt unverändert.
-3. Rufe `migrate.php` im Browser auf (oder per Kommandozeile: `php migrate.php`) und bestätige die Übernahme.
-4. Prüfe die Daten in der Anwendung, auch Statistik und Beitragsrückerstattung.
-5. Lösche danach `migrate.php` und verschiebe die `data_*.json` in ein Backup **außerhalb** des Webverzeichnisses.
-
-Die Übernahme läuft in einer Transaktion (alles oder nichts), ändert die JSON-Dateien nicht und kann gefahrlos wiederholt werden; bereits vorhandene Belege werden nicht überschrieben.
 
 ## Konfiguration (.env)
 
